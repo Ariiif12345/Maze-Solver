@@ -1,0 +1,114 @@
+import random
+import heapq
+import time
+
+# Maze generation
+def generate_maze(width, height):
+    maze = [[1 for _ in range(width)] for _ in range(height)]
+    
+    def carve_path(x, y):
+        maze[y][x] = 0
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+        random.shuffle(directions)
+        for dx, dy in directions:
+            nx, ny = x + dx*2, y + dy*2
+            if 0 <= nx < width and 0 <= ny < height and maze[ny][nx] == 1:
+                maze[y+dy][x+dx] = 0
+                carve_path(nx, ny)
+    
+    carve_path(1, 1)
+    maze[1][0] = maze[height-2][width-1] = 0  # Set start and end
+    return maze
+
+# Dijkstra's Algorithm
+def dijkstra(maze, start, end):
+    height, width = len(maze), len(maze[0])
+    queue = [(0, start)]
+    visited = set()
+    came_from = {}
+    cost_so_far = {start: 0}
+    
+    while queue:
+        current_cost, current = heapq.heappop(queue)
+        
+        if current == end:
+            break
+        
+        if current in visited:
+            continue
+        
+        visited.add(current)
+        
+        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            next_node = (current[0] + dx, current[1] + dy)
+            if 0 <= next_node[0] < width and 0 <= next_node[1] < height and maze[next_node[1]][next_node[0]] == 0:
+                new_cost = current_cost + 1
+                if next_node not in cost_so_far or new_cost < cost_so_far[next_node]:
+                    cost_so_far[next_node] = new_cost
+                    heapq.heappush(queue, (new_cost, next_node))
+                    came_from[next_node] = current
+    
+    return came_from, visited
+
+# A* Algorithm
+def manhattan_distance(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+def a_star(maze, start, end):
+    height, width = len(maze), len(maze[0])
+    queue = [(0, start)]
+    visited = set()
+    came_from = {}
+    g_score = {start: 0}
+    f_score = {start: manhattan_distance(start, end)}
+    
+    while queue:
+        current = heapq.heappop(queue)[1]
+        
+        if current == end:
+            break
+        
+        if current in visited:
+            continue
+        
+        visited.add(current)
+        
+        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            next_node = (current[0] + dx, current[1] + dy)
+            if 0 <= next_node[0] < width and 0 <= next_node[1] < height and maze[next_node[1]][next_node[0]] == 0:
+                tentative_g_score = g_score[current] + 1
+                if next_node not in g_score or tentative_g_score < g_score[next_node]:
+                    came_from[next_node] = current
+                    g_score[next_node] = tentative_g_score
+                    f_score[next_node] = g_score[next_node] + manhattan_distance(next_node, end)
+                    heapq.heappush(queue, (f_score[next_node], next_node))
+    
+    return came_from, visited
+
+# Main function to run the comparison
+def main():
+    width, height = 51, 51
+    maze = generate_maze(width, height)
+    start, end = (0, 1), (width-1, height-2)
+    
+    # Solve with Dijkstra's
+    start_time = time.time()
+    dijkstra_path, dijkstra_visited = dijkstra(maze, start, end)
+    dijkstra_time = time.time() - start_time
+    
+    # Solve with A*
+    start_time = time.time()
+    astar_path, astar_visited = a_star(maze, start, end)
+    astar_time = time.time() - start_time
+    
+    # Print results
+    print(f"Dijkstra's Algorithm:")
+    print(f"Time taken: {dijkstra_time:.6f} seconds")
+    print(f"Nodes explored: {len(dijkstra_visited)}")
+    
+    print(f"\nA* Algorithm:")
+    print(f"Time taken: {astar_time:.6f} seconds")
+    print(f"Nodes explored: {len(astar_visited)}")
+
+if __name__ == "__main__":
+    main()
